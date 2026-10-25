@@ -1,0 +1,21 @@
+name = "compost-app"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+# Static files in ./public are served directly. Anything that doesn't match a
+# file (the /api/* routes) falls through to the Worker.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# No database_id needed: `wrangler deploy` (4.45 or newer) creates the
+# database on the first deploy and keeps it linked after that.
+[[d1_databases]]
+binding = "DB"
+database_name = "compost"
+
+# Lets the Worker import schema.sql and create the table itself.
+[[rules]]
+type = "Text"
+globs = ["**/*.sql"]
+fallthrough = true
