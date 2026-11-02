@@ -1,0 +1,155 @@
+/* Command palette (⌘K) and the shortcut sheet: a floating panel of frosted
+   material over a dimmed page, scaling in a touch. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  padding: max(12vh, 24px) 16px 16px;
+  overflow-y: auto;
+}
+/* The scrim is its own layer, so fading it in doesn't stop the panel's
+   backdrop blur from seeing the page. */
+.overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--scrim);
+  animation: overlay-in 0.2s ease both;
+}
+@keyframes overlay-in { from { opacity: 0; } }
+
+.palette, .keysheet {
+  max-width: 600px;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(40px);
+  backdrop-filter: saturate(180%) blur(40px);
+  border-radius: 20px;
+  box-shadow: var(--shadow-pop), inset 0 0 0 0.5px rgb(255 255 255 / 0.18);
+  overflow: hidden;
+  transform-origin: 50% 0;
+  animation: panel-pop 0.32s var(--ease) both;
+}
+@keyframes panel-pop {
+  from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The search field, with a drawn magnifier on its left. */
+.palette-input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 0.5px solid var(--line);
+  border-radius: 0;
+  padding: 20px 22px 20px 56px;
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 20 20'/%3E%3C/svg%3E") no-repeat 22px 50% / 22px 22px;
+}
+.palette-input::placeholder { color: var(--faint); }
+.palette-input:focus-visible { outline: none; box-shadow: none; }
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 10px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 8px;
+}
+
+.palette-section {
+  padding: 14px 14px 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.palette-section:first-child { padding-top: 8px; }
+
+.palette-option {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.palette-option:hover { background: var(--chip); }
+.palette-option[aria-selected="true"] { background: var(--accent-soft); }
+.palette-option[aria-selected="true"] .palette-command,
+.palette-option[aria-selected="true"] .palette-title { color: var(--accent); }
+
+.palette-title, .palette-command {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-title { font-family: var(--font-serif); font-weight: 500; }
+.palette-sub {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-empty { padding: 20px 14px; color: var(--muted); text-align: center; }
+
+/* Shortcut sheet */
+.overlay:has(> .keysheet) { padding-top: max(6vh, 16px); }
+.keysheet { max-width: 520px; padding: 22px 24px 14px; }
+.keysheet:focus { outline: none; }
+.keysheet h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 14px;
+}
+.keysheet-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0;
+  margin: 0;
+}
+.keysheet-list dt { padding-right: 20px; }
+.keysheet-list dt, .keysheet-list dd { display: flex; align-items: center; }
+.keysheet-list dt, .keysheet-list dd {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-bottom: 0.5px solid var(--line);
+}
+.keysheet-list dt:nth-last-of-type(1), .keysheet-list dd:last-of-type { border-bottom: 0; }
+.keysheet-list dt { white-space: nowrap; }
+.keysheet-list dd { margin: 0; color: var(--fg); font-size: 0.95rem; }
+kbd {
+  display: inline-block;
+  min-width: 1.9em;
+  padding: 2px 8px;
+  font: 600 0.8rem/1.5 var(--font-sans);
+  text-align: center;
+  color: var(--fg);
+  background: var(--surface);
+  border: 0.5px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 var(--line), 0 1px 2px rgb(0 0 0 / 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  kbd { background: #3a3a3c; box-shadow: 0 1px 0 rgb(0 0 0 / 0.6); }
+}
+.keysheet-close { text-align: right; margin: 12px 0 0; }
+.keysheet-close .link { font-weight: 600; }
+
+@media (max-width: 600px) {
+  .overlay { padding-top: max(env(safe-area-inset-top), 12px); }
+  .palette, .keysheet { border-radius: 18px; }
+  .palette-input { font-size: 1.1rem; padding: 16px 18px 16px 50px; background-position: 18px 50%; }
+}

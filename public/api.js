@@ -42,7 +42,7 @@ export function askPasscode(root, S, wrong = false) {
     const label = el('label', { htmlFor: 'passcode' }, S.passcodeLabel);
     const input = el('input', { id: 'passcode', type: 'password', autocomplete: 'current-password', required: true });
     const button = el('button', { type: 'submit' }, S.passcodeSubmit);
-    form.append(p, label, el('div', { className: 'row' }, input, button));
+    form.append(el('img', { className: 'passcode-icon', src: '/icons/icon.svg', alt: '' }), el('h1', {}, S.appName), p, label, el('div', { className: 'row' }, input, button));
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       setPasscode(input.value);

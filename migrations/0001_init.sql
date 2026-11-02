@@ -1,4 +1,7 @@
--- Compost: one table. Where an item is follows from `outcome`:
+-- 0001: the V1 schema. Every statement is IF NOT EXISTS, so this is safe on a
+-- database that V1 already created.
+--
+-- Where an item is follows from `outcome`:
 --   NULL = Rack, 'done' = Vault, 'tossed' / 'dropped' / 'expired' = Heap.
 CREATE TABLE IF NOT EXISTS items (
   id         INTEGER PRIMARY KEY,
@@ -18,3 +21,10 @@ CREATE TABLE IF NOT EXISTS items (
 -- A URL can only be in the rack once.
 CREATE UNIQUE INDEX IF NOT EXISTS items_rack_url ON items (url) WHERE outcome IS NULL;
 CREATE INDEX IF NOT EXISTS items_outcome ON items (outcome, ended_at);
+
+-- Small key/value store: each applied migration is recorded here as
+-- 'migration:N'. Later phases may add their own keys.
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT
+);

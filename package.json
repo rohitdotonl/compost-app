@@ -1,0 +1,8 @@
+{
+  "name": "compost",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --import ./tests/setup.js --test \"tests/*.test.js\""
+  }
+}

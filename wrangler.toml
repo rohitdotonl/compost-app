@@ -13,9 +13,14 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "compost"
+database_id = "9ba4751b-ae84-4a73-a4a9-02ade5cf75bc"
 
-# Lets the Worker import schema.sql and create the table itself.
+# Lets the Worker import migrations/*.sql as text and apply them itself.
 [[rules]]
 type = "Text"
 globs = ["**/*.sql"]
 fallthrough = true
+
+# Phase 8: once an hour, for the daily reminder (src/push.js). Free plan.
+[triggers]
+crons = ["0 * * * *"]

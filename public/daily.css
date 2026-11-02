@@ -1,0 +1,96 @@
+/* The daily line (Phase 6): a quote card at the top of the Rack, "A line
+   from your Vault", and the Sunday reading-time line beneath it. */
+.daily {
+  position: relative;
+  margin: 0 0 18px;
+  padding: 20px 24px 18px 26px;
+  border-radius: var(--radius);
+  background: var(--bg-grouped);
+  overflow: hidden;
+}
+/* The section's own label, as an eyebrow. */
+.daily::before {
+  content: attr(aria-label);
+  display: block;
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.daily::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  opacity: 0.8;
+}
+.daily-quote {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+.daily-from {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.daily-from a { color: inherit; font-weight: 500; text-decoration: none; }
+.daily-from a:hover { color: var(--fg); text-decoration: underline; }
+.daily-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.daily-actions .link {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.daily-actions .link:hover, .daily-actions .link:focus-visible { background: var(--accent-soft); color: var(--accent); text-decoration: none; }
+.daily-after { transition: opacity 0.4s ease; }
+.daily-after.leaving { opacity: 0; }
+@media (max-width: 599px) {
+  .daily { padding: 18px 18px 16px 20px; }
+  .daily-quote { font-size: 1.15rem; }
+}
+
+/* Phase 8: the Sunday reading-time line, quieter than the daily line. */
+.weekly {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 22px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.weekly::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.daily[hidden] + .weekly { margin-top: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .daily-after { transition: none; }
+}
