@@ -12,12 +12,16 @@ link.addEventListener('click', (e) => e.preventDefault());
 const field = el('textarea', { readOnly: true, rows: 4, value: code, 'aria-label': S.bookmarkletCopy });
 field.addEventListener('focus', () => field.select());
 
-document.getElementById('app').replaceChildren(
+const app = document.getElementById('app');
+app.classList.add('bookmarklet-page');
+app.replaceChildren(
   el('h1', {}, S.bookmarkletTitle),
-  el('p', {}, S.bookmarkletDrag),
-  el('p', {}, link),
-  el('p', { className: 'meta' }, S.bookmarkletUse),
-  el('p', { className: 'meta' }, S.bookmarkletCopy),
-  field,
+  el('div', { className: 'page-card' },
+    el('p', { className: 'lead' }, S.bookmarkletDrag),
+    el('p', { className: 'drag-target' }, link),
+    el('p', { className: 'meta' }, S.bookmarkletUse)),
+  el('div', { className: 'page-card' },
+    el('p', { className: 'meta' }, S.bookmarkletCopy),
+    field),
   el('p', { className: 'footer' }, el('a', { href: '/' }, S.back))
 );

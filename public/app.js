@@ -1,63 +1,83 @@
+// The main page's shell: passcode, header, tabs, status line and the router.
+// Each tab is its own module; the state and the actions live in store.js.
+// keys.js drives store.js from the keyboard and handles #vault?q=… and #item/N.
 import { S } from './strings.js';
-import { api, askPasscode, el, getPasscode, Unauthorized } from './api.js';
+import { askPasscode, el, getPasscode, Unauthorized } from './api.js';
+import * as store from './store.js';
+import { createRackPanel } from './rack.js';
+import { createVaultPanel } from './vault.js';
+import { createHeapPanel } from './heap.js';
+import { createGuidePanel } from './guide.js';
+import { parseHash, startKeys } from './keys.js';
+import { createReader } from './reader.js';
+import { createDaily, createWeekly } from './daily.js';
+import { createNotify } from './notify.js';
 
-const DAY = 24 * 60 * 60 * 1000;
-const TABS = ['rack', 'vault', 'heap'];
+const TABS = ['rack', 'vault', 'heap', 'guide'];
 
+// Tab icons: simple line drawings, 24×24, drawn for Compost.
+const ICONS = {
+  rack: '<path d="M4 4.5h4v15H4zM10 4.5h4v15h-4z"/><path d="M16.2 5.6l3.4-.9 3.1 13.9-3.4.9z"/>',
+  vault: '<path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14.5H7.5A2.5 2.5 0 0 0 5 20z"/><path d="M5 20a1.5 1.5 0 0 0 1.5 1.5H19"/><path d="M9 7.5h6"/>',
+  heap: '<path d="M12 21v-7.5"/><path d="M12 13.5c0-5 3.5-8.5 8.5-8.5 0 5-3.5 8.5-8.5 8.5z"/><path d="M12 16c0-4-2.8-6.5-7-6.5 0 4 2.8 6.5 7 6.5z"/>',
+  guide: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.2-2.5 3.8"/><path d="M12 17h.01"/>',
+  save: '<path d="M12 5v14M5 12h14"/>',
+};
+
+function icon(name) {
+  const span = el('span', { className: 'icon', 'aria-hidden': 'true' });
+  span.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+  return span.firstChild;
+}
 const root = document.getElementById('app');
-let data = null;         // last GET /api/items response
-let doneOpenId = null;   // rack item showing the takeaway prompt
-let takeawayDraft = '';  // survives re-renders while the prompt is open
-let vaultQuery = '';
-let statusTimer = null;
-let ui = null;           // persistent elements, built once
-
-// ---------------------------------------------------------------------------
-// Loading
-// ---------------------------------------------------------------------------
+let ui = null; // persistent elements, built once per unlock
+let reader = null; // Phase 4: the reader at #read/42, built once
+let daily = null; // the daily line at the top of the Rack (daily.js)
+let weekly = null; // Phase 8: the Sunday reading-time line beneath it
 
 async function start() {
   if (!getPasscode()) await askPasscode(root, S);
-  await load();
+  buildShell();
+  reader = createReader();
+  store.setUnauthorizedHandler(relogin);
+  store.subscribe(render);
+  window.addEventListener('hashchange', () => render(store.getState()));
+  startKeys({ panels: () => ui && ui.panels, currentTab, render: () => render(store.getState()) });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && ui) load();
+    if (document.visibilityState === 'visible' && ui) {
+      refresh();
+      daily.load();
+      weekly.load();
+    }
   });
-  window.addEventListener('hashchange', render);
+
+  // Paint the last known list at once, then refresh behind it.
+  const painted = store.paintFromCache();
+  await refresh(!painted);
 }
 
-async function load() {
+// Loads from the server. With nothing on screen yet, a failure shows a retry
+// page; otherwise a quiet status line is enough.
+async function refresh(firstPaint = false) {
   try {
-    const res = await api('/api/items');
-    data = res.data;
-    if (!ui) buildShell();
-    render();
+    await store.load();
   } catch (err) {
-    if (err instanceof Unauthorized) {
-      ui = null;
-      await askPasscode(root, S, true);
-      return load();
-    }
-    if (ui) return showStatus(S.offline);
+    if (err instanceof Unauthorized) return relogin();
+    if (!firstPaint) return store.setStatus(S.offline);
     root.replaceChildren(
       el('p', { className: 'calm' }, S.offline),
-      el('button', { type: 'button', onclick: load }, S.retry)
+      el('button', { type: 'button', onclick: () => { buildShell(); refresh(true); } }, S.retry)
     );
   }
 }
 
-// Runs an API action, then reloads. Returns the response data.
-async function act(path, body, button) {
-  if (button) button.disabled = true;
-  try {
-    const { data: res } = await api(path, body ?? {});
-    await load();
-    return res;
-  } catch (err) {
-    if (err instanceof Unauthorized) return load();
-    showStatus(S.offline);
-    if (button) button.disabled = false;
-    return null;
-  }
+async function relogin() {
+  ui = null;
+  root.classList.remove('shell');
+  store.forgetCache();
+  await askPasscode(root, S, true);
+  buildShell();
+  await refresh(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,280 +85,98 @@ async function act(path, body, button) {
 // ---------------------------------------------------------------------------
 
 function buildShell() {
-  const nav = el('nav', { className: 'tabs' });
+  const nav = el('nav', { className: 'tabs', 'aria-label': S.navLabel });
   const links = {};
+  const counts = {};
+  const brand = el('div', { className: 'brand' }, el('img', { src: '/icons/icon.svg', alt: '' }), S.appName);
+  nav.append(brand, el('p', { className: 'nav-heading' }, S.navLibrary));
   for (const tab of TABS) {
-    links[tab] = el('a', { href: `#${tab}` }, S[`tab${tab[0].toUpperCase()}${tab.slice(1)}`]);
+    if (tab === 'guide') nav.append(el('p', { className: 'nav-heading' }, S.navHelp));
+    counts[tab] = el('span', { className: 'count' });
+    links[tab] = el('a', { href: `#${tab}` }, icon(tab), el('span', { className: 'label' }, tabName(tab)), counts[tab]);
     nav.append(links[tab]);
   }
-
+  nav.append(el('span', { className: 'nav-extra' }, el('a', { href: '/bookmarklet' }, icon('save'), el('span', { className: 'label' }, S.bookmarkletLink))));
   const status = el('p', { className: 'status', role: 'status', 'aria-live': 'polite' });
-
-  // Rack: add link form
-  const addInput = el('input', { type: 'url', placeholder: S.addPlaceholder, 'aria-label': S.addPlaceholder, required: true });
-  const addButton = el('button', { type: 'submit' }, S.addSubmit);
-  const addForm = el('form', { className: 'add row' }, addInput, addButton);
-  addForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    addLink(addInput, addButton);
-  });
-  const rackList = el('ul', { className: 'list' });
-  const rack = el('section', { className: 'panel' }, addForm, rackList);
-
-  // Vault: search and download
-  const search = el('input', { type: 'search', placeholder: S.vaultSearch, 'aria-label': S.vaultSearch });
-  search.addEventListener('input', () => {
-    vaultQuery = search.value;
-    renderVault();
-  });
-  const download = el('a', { href: '#', className: 'quiet' }, S.vaultDownload);
-  download.addEventListener('click', (e) => {
-    e.preventDefault();
-    downloadVault();
-  });
-  const vaultList = el('ul', { className: 'list' });
-  const vault = el('section', { className: 'panel' }, el('div', { className: 'row' }, search), vaultList, el('p', { className: 'footer' }, download));
-
-  // Heap
-  const heapList = el('ul', { className: 'list' });
-  const heap = el('section', { className: 'panel' }, el('p', { className: 'note' }, S.heapNote), heapList);
-
-  const header = el('header', {}, el('h1', {}, S.appName), nav);
-  const footer = el('p', { className: 'footer' }, el('a', { href: '/bookmarklet', className: 'quiet' }, S.bookmarkletLink));
-  root.replaceChildren(header, status, rack, vault, heap, footer);
-  ui = { links, status, addInput, panels: { rack, vault, heap }, rackList, vaultList, heapList };
+  const panels = { rack: createRackPanel(), vault: createVaultPanel(), heap: createHeapPanel(), guide: createGuidePanel() };
+  daily = createDaily();
+  panels.rack.element.prepend(daily.element);
+  daily.load();
+  weekly = createWeekly();
+  daily.element.after(weekly.element);
+  weekly.load();
+  const notify = createNotify(); // Phase 8: the daily reminder's footer line
+  notify.load();
+  const title = el('h1', {});
+  const subtitle = el('p', { className: 'subtitle' });
+  const header = el('header', { className: 'large-title' }, title, subtitle);
+  const footer = el(
+    'p',
+    { className: 'footer' },
+    el('a', { href: '#guide' }, S.guideLink), ' · ',
+    el('a', { href: '/bookmarklet' }, S.bookmarkletLink)
+  );
+  const content = el('div', { className: 'content' }, header, ...TABS.map((t) => panels[t].element), footer, notify.element);
+  root.classList.add('shell');
+  root.replaceChildren(nav, content, status);
+  ui = { links, counts, status, panels, title, subtitle };
+  render(store.getState());
 }
 
-function currentTab() {
-  const tab = location.hash.slice(1);
+function tabName(tab) {
+  return S[`tab${tab[0].toUpperCase()}${tab.slice(1)}`];
+}
+
+export function currentTab() {
+  const tab = parseHash(location.hash).tab;
   return TABS.includes(tab) ? tab : 'rack';
 }
 
-function render() {
-  if (!ui || !data) return;
+function render(state) {
+  if (reader) reader.render(state);
+  if (!ui) return;
+  renderStatus(state.status);
+  if (!state.data) return;
   const tab = currentTab();
+  renderTitle(state, tab);
   for (const t of TABS) {
-    ui.panels[t].hidden = t !== tab;
+    ui.panels[t].element.hidden = t !== tab;
     if (t === tab) ui.links[t].setAttribute('aria-current', 'page');
     else ui.links[t].removeAttribute('aria-current');
-  }
-  renderRack();
-  renderVault();
-  renderHeap();
-}
-
-function showStatus(text) {
-  if (!ui) return;
-  ui.status.textContent = text;
-  clearTimeout(statusTimer);
-  statusTimer = setTimeout(() => (ui.status.textContent = ''), 5000);
-}
-
-// ---------------------------------------------------------------------------
-// Rack
-// ---------------------------------------------------------------------------
-
-function renderRack() {
-  const now = Date.now();
-  if (!data.rack.length) {
-    ui.rackList.replaceChildren(el('li', { className: 'calm' }, S.rackEmpty));
-    return;
-  }
-  ui.rackList.replaceChildren(...data.rack.map((item) => rackRow(item, now)));
-}
-
-function rackRow(item, now) {
-  const meta = [item.site];
-  if (item.minutes) meta.push(S.minutes(item.minutes));
-  meta.push(timeLeft(item.expires_at, now));
-
-  const row = el(
-    'li',
-    { className: 'item' },
-    el('a', { className: 'title', href: item.url, target: '_blank', rel: 'noopener noreferrer' }, item.title),
-    el('p', { className: 'meta' }, meta.join(' · '), item.intent ? el('span', { className: 'chip' }, S.intents[item.intent]) : null)
-  );
-  row.style.opacity = fade(item.expires_at - now, data.rules.lifespan);
-
-  if (doneOpenId === item.id) {
-    row.append(takeawayForm(item));
-    return row;
-  }
-
-  const doneBtn = el('button', { type: 'button' }, S.done);
-  doneBtn.addEventListener('click', () => {
-    doneOpenId = item.id;
-    takeawayDraft = '';
-    renderRack();
-    ui.rackList.querySelector('.takeaway input')?.focus();
-  });
-  const tossBtn = el('button', { type: 'button' }, S.toss);
-  tossBtn.addEventListener('click', async () => {
-    const res = await act(`/api/items/${item.id}/toss`, {}, tossBtn);
-    if (res && res.ok) showStatus(S.tossed);
-  });
-  const actions = el(
-    'div',
-    { className: 'actions' },
-    el('a', { className: 'button', href: item.url, target: '_blank', rel: 'noopener noreferrer' }, S.open),
-    doneBtn,
-    tossBtn
-  );
-  if (!item.extended) {
-    const extendBtn = el('button', { type: 'button' }, S.extend);
-    extendBtn.addEventListener('click', () => act(`/api/items/${item.id}/extend`, {}, extendBtn));
-    actions.append(extendBtn);
-  }
-  row.append(actions);
-  return row;
-}
-
-function takeawayForm(item) {
-  const input = el('input', { type: 'text', maxLength: 500, value: takeawayDraft, 'aria-label': S.takeawayPrompt, enterKeyHint: 'done' });
-  input.addEventListener('input', () => (takeawayDraft = input.value));
-  const keep = el('button', { type: 'submit' }, S.keep);
-  const skip = el('button', { type: 'button' }, S.skip);
-  const form = el(
-    'form',
-    { className: 'takeaway' },
-    el('label', {}, S.takeawayPrompt),
-    el('div', { className: 'row' }, input, keep, skip)
-  );
-  const finish = async (takeaway) => {
-    keep.disabled = skip.disabled = true;
-    doneOpenId = null;
-    const res = await act(`/api/items/${item.id}/done`, takeaway ? { takeaway } : {});
-    if (res && res.ok) showStatus(S.slotFreed(res.used, res.limit));
-  };
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    finish(input.value.trim());
-  });
-  skip.addEventListener('click', () => finish(''));
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      doneOpenId = null;
-      renderRack();
-    }
-  });
-  return form;
-}
-
-async function addLink(input, button) {
-  const url = input.value.trim();
-  if (!url) return;
-  const res = await act('/api/items', { url }, button);
-  button.disabled = false;
-  if (!res) return;
-  if (res.status === 'saved') {
-    input.value = '';
-    showStatus(S.savedReceipt(res.used, res.limit, weekday(res.item.expires_at)));
-  } else if (res.status === 'in_rack') {
-    input.value = '';
-    showStatus(S.alreadyInRack);
-  } else if (res.status === 'in_vault') {
-    input.value = '';
-    showStatus(S.alreadyInVault);
-  } else if (res.status === 'full') {
-    // The Save page owns the drop-one-to-make-room flow.
-    location.href = `/save?url=${encodeURIComponent(url)}`;
-  } else if (res.status === 'invalid_url') {
-    showStatus(S.invalidLink);
+    ui.panels[t].render(state);
   }
 }
 
-// Full opacity with a full lifespan left, about 40% on the last day.
-function fade(msLeft, lifespan) {
-  const t = Math.min(1, Math.max(0, (msLeft - DAY) / (lifespan - DAY)));
-  return (0.4 + 0.6 * t).toFixed(2);
+// The large title and its quiet subtitle, plus the sidebar counts.
+function renderTitle(state, tab) {
+  const { rack, vault, heap } = state.data;
+  const slots = store.rules().slots;
+  ui.title.textContent = tabName(tab);
+  ui.subtitle.textContent =
+    tab === 'rack' ? S.slotsUsed(rack.length, slots) :
+    tab === 'vault' ? S.vaultCount(vault.length) :
+    tab === 'heap' ? S.heapCount(heap.length) : '';
+  ui.counts.rack.textContent = `${rack.length}/${slots}`;
+  ui.counts.vault.textContent = vault.length ? String(vault.length) : '';
+  ui.counts.heap.textContent = heap.length ? String(heap.length) : '';
+  document.title = tab === 'rack' ? S.appName : `${tabName(tab)} · ${S.appName}`;
 }
 
-function timeLeft(expiresAt, now) {
-  const days = Math.round((startOfDay(expiresAt) - startOfDay(now)) / DAY);
-  if (days <= 0) return S.expiresToday;
-  if (days === 1) return S.expiresTomorrow;
-  return S.daysLeft(days);
-}
-
-function startOfDay(ms) {
-  const d = new Date(ms);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-function weekday(ms) {
-  return new Date(ms).toLocaleDateString(undefined, { weekday: 'long' });
-}
-
-function shortDate(ms) {
-  return new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-// ---------------------------------------------------------------------------
-// Vault
-// ---------------------------------------------------------------------------
-
-function renderVault() {
-  if (!data.vault.length) {
-    ui.vaultList.replaceChildren(el('li', { className: 'calm' }, S.vaultEmpty));
-    return;
+let shownStatus = null;
+function renderStatus(status) {
+  if (status === shownStatus) return;
+  shownStatus = status;
+  if (!status) return ui.status.replaceChildren();
+  const parts = [status.text];
+  if (status.action) {
+    const button = el('button', { type: 'button', className: 'link' }, status.action.label);
+    button.addEventListener('click', () => {
+      store.setStatus(null);
+      status.action.run();
+    });
+    parts.push(' ', button);
   }
-  const q = vaultQuery.trim().toLowerCase();
-  const items = q
-    ? data.vault.filter((i) => [i.title, i.site, i.url, i.takeaway].some((f) => f && f.toLowerCase().includes(q)))
-    : data.vault;
-  if (!items.length) {
-    ui.vaultList.replaceChildren(el('li', { className: 'calm' }, S.vaultNoMatch));
-    return;
-  }
-  ui.vaultList.replaceChildren(
-    ...items.map((item) =>
-      el(
-        'li',
-        { className: 'item' },
-        el('a', { className: 'title', href: item.url, target: '_blank', rel: 'noopener noreferrer' }, item.title),
-        el('p', { className: 'meta' }, `${item.site} · ${S.finishedOn(shortDate(item.ended_at))}`),
-        item.takeaway ? el('blockquote', {}, item.takeaway) : null
-      )
-    )
-  );
-}
-
-function downloadVault() {
-  const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
-  const lines = [`# ${S.vaultFileTitle}`, '', S.vaultFileExported(iso(Date.now())), ''];
-  for (const item of data.vault) {
-    const title = item.title.replace(/([\\[\]])/g, '\\$1');
-    lines.push(`## [${title}](${item.url.replace(/\)/g, '%29')})`, '', `${item.site} · ${S.finishedOn(iso(item.ended_at))}`, '');
-    if (item.takeaway) lines.push(`> ${item.takeaway}`, '');
-  }
-  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
-  const a = el('a', { href: URL.createObjectURL(blob), download: `compost-vault-${iso(Date.now())}.md` });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
-// ---------------------------------------------------------------------------
-// Heap
-// ---------------------------------------------------------------------------
-
-function renderHeap() {
-  if (!data.heap.length) {
-    ui.heapList.replaceChildren(el('li', { className: 'calm' }, S.heapEmpty));
-    return;
-  }
-  ui.heapList.replaceChildren(
-    ...data.heap.map((item) =>
-      el(
-        'li',
-        { className: 'item' },
-        el('p', { className: 'title' }, item.title),
-        el('a', { className: 'url', href: item.url, target: '_blank', rel: 'noopener noreferrer' }, item.url),
-        el('p', { className: 'meta' }, S.leftOn(shortDate(item.ended_at)))
-      )
-    )
-  );
+  ui.status.replaceChildren(...parts);
 }
 
 // ---------------------------------------------------------------------------

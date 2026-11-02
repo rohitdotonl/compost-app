@@ -1,0 +1,299 @@
+/* The pages outside the app shell: passcode, Save, bookmarklet. */
+
+/* A rounded card on the grouped background, shared by Save and bookmarklet. */
+.page-card {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 0.5px 0 var(--line), 0 1px 2px rgb(0 0 0 / 0.04);
+  margin-bottom: 16px;
+}
+.page-card > :first-child { margin-top: 0; }
+.page-card > :last-child { margin-bottom: 0; }
+.page-card .meta { color: var(--muted); font-size: 0.9rem; margin: 0 0 12px; }
+
+body:has(> .save), body:has(> #app > .passcode), body:has(> .bookmarklet-page) {
+  background: var(--bg-grouped);
+}
+@media (prefers-color-scheme: dark) {
+  body:has(> .save), body:has(> #app > .passcode), body:has(> .bookmarklet-page) { background: var(--bg); }
+}
+
+/* ---------------------------------------------------------------------------
+   Passcode: a centred card with the app icon, the name, a field, one button
+   ------------------------------------------------------------------------- */
+#app:has(> .passcode) {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.passcode {
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 28px 28px;
+  background: var(--surface);
+  border-radius: 24px;
+  box-shadow: var(--shadow-pop);
+  text-align: center;
+  animation: card-in 0.4s var(--ease) both;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.passcode-icon {
+  display: block;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 17px;
+  box-shadow: var(--shadow-cover);
+}
+.passcode h1 { margin: 0 0 6px; font-size: 1.85rem; }
+.passcode > p { margin: 0 0 22px; color: var(--muted); font-size: 0.98rem; line-height: 1.45; }
+.passcode label {
+  display: block;
+  margin: 0 0 6px 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: left;
+}
+.passcode .row { flex-direction: column; align-items: stretch; gap: 12px; }
+.passcode input { padding: 13px 16px; font-size: 1.05rem; border-radius: 12px; }
+.passcode button { width: 100%; padding: 12px 16px; font-size: 1.05rem; font-weight: 600; border-radius: 12px; }
+@media (max-width: 480px) {
+  .passcode { box-shadow: none; }
+}
+@media (prefers-color-scheme: dark) {
+  .passcode { background: var(--surface); box-shadow: 0 0 0 0.5px var(--line); }
+}
+
+/* ---------------------------------------------------------------------------
+   Save page: a receipt like a book just added to a library. Often in a
+   small popup (about 420 × 560), so it stays compact.
+   ------------------------------------------------------------------------- */
+.column.save { max-width: 480px; padding: 20px 16px 32px; }
+
+.page-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 4px 16px;
+}
+.page-brand img { width: 28px; height: 28px; border-radius: 7px; box-shadow: 0 0.5px 1px rgb(0 0 0 / 0.2); }
+.page-brand h1 { margin: 0; font-size: 1.3rem; letter-spacing: -0.015em; }
+
+.save .page-card { padding: 24px 20px 20px; animation: card-in 0.4s var(--ease) both; }
+
+.receipt { font-size: 1.05rem; margin: 4px 0 16px; text-align: center; }
+.receipt.saved {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 20px;
+}
+.cover-wrap { perspective: 600px; }
+.receipt.saved .thumb {
+  width: 108px;
+  height: 144px;
+  margin: 0;
+  border-radius: 4px 7px 7px 4px;
+  box-shadow: var(--shadow-cover);
+  position: relative;
+  animation: cover-in 0.6s var(--ease) both;
+}
+/* A spine shadow and a soft sheen, so the cover reads as a book. */
+.receipt.saved .thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.18), rgb(255 255 255 / 0.12) 4%, transparent 9%, transparent 85%, rgb(0 0 0 / 0.05));
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.12);
+  pointer-events: none;
+}
+@keyframes cover-in {
+  from { opacity: 0; transform: translateY(14px) rotateX(10deg) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+.thumb { display: block; overflow: hidden; }
+.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tile {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: hsl(var(--hue, 90) 18% var(--tile-l));
+  color: hsl(var(--hue, 90) 22% var(--tile-ink-l));
+  font-family: var(--font-serif);
+  font-size: 2.6rem;
+  font-weight: 500;
+}
+.receipt-text { text-align: center; min-width: 0; max-width: 100%; }
+.receipt.saved .title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.receipt.saved .meta {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.intent {
+  padding-top: 16px;
+  border-top: 0.5px solid var(--line);
+  text-align: center;
+}
+.intent .meta { margin: 0 0 10px; font-size: 0.85rem; }
+/* Intent chips: one pill track, the chosen one lifts out in the accent. */
+.chips {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 0 0 20px;
+  border-radius: 999px;
+  background: var(--field);
+}
+.chips button {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.chips button:hover:not([aria-pressed="true"]) { background: var(--chip); }
+.chips button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+
+.save .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.save .actions > * { flex: 1; }
+.save .actions .button, .save .actions button { width: 100%; padding: 11px 16px; font-weight: 600; }
+
+/* Rack full: pick one to drop, an inset grouped list of radio rows. */
+.full .receipt { font-weight: 600; margin-bottom: 14px; }
+.choices {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  border-radius: 14px;
+  background: var(--bg-grouped);
+  overflow: hidden;
+}
+@media (prefers-color-scheme: dark) { .choices { background: #2c2c2e; } }
+.choices li + li label::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 46px;
+  right: 0;
+  border-top: 0.5px solid var(--line);
+}
+.choices label {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.choices label:hover { background: var(--chip); }
+.choices label:has(input:checked) { background: var(--accent-soft); }
+.choices input {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--faint);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.choices input:checked { border-color: var(--accent); background: var(--accent); }
+.choices input:checked::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-fg);
+}
+.choices input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: none; }
+.choice-text { min-width: 0; }
+.choice-title {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.choices .site { color: var(--muted); font-size: 0.8rem; display: block; }
+
+/* ---------------------------------------------------------------------------
+   Bookmarklet page
+   ------------------------------------------------------------------------- */
+.bookmarklet-page { max-width: 560px; }
+.bookmarklet-page .lead { font-size: 1.02rem; margin: 0 0 18px; }
+.drag-target {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 18px;
+  padding: 26px 16px;
+  border-radius: 14px;
+  border: 1.5px dashed var(--line);
+  background: var(--bg-grouped);
+}
+@media (prefers-color-scheme: dark) { .drag-target { background: #2c2c2e; } }
+.button.bookmarklet {
+  padding: 11px 22px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  box-shadow: 0 4px 14px -4px var(--accent), 0 1px 2px rgb(0 0 0 / 0.12);
+  cursor: grab;
+}
+.button.bookmarklet::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5h12v17l-6-4.2-6 4.2z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5h12v17l-6-4.2-6 4.2z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.button.bookmarklet:active { cursor: grabbing; }
+textarea {
+  width: 100%;
+  font: 0.82rem/1.45 var(--font-mono);
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--fg);
+  resize: vertical;
+  word-break: break-all;
+}
+.bookmarklet-page .footer { margin: 24px 4px 0; }

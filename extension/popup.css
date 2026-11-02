@@ -1,0 +1,240 @@
+/* A miniature of the Save page. Tokens mirrored from public/style.css
+   (an extension page can't load the app's stylesheet). */
+:root {
+  color-scheme: light dark;
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+  --bg: #ffffff;
+  --bg-grouped: #f2f2f7;
+  --surface: #ffffff;
+  --field: rgb(118 118 128 / 0.12);
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --faint: #a1a1a6;
+  --line: rgb(60 60 67 / 0.16);
+  --accent: #d2571d;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(210 87 29 / 0.12);
+  --chip: rgb(118 118 128 / 0.12);
+  --radius: 12px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --bg-grouped: #000000;
+    --surface: #2c2c2e;
+    --field: rgb(118 118 128 / 0.24);
+    --fg: #f5f5f7;
+    --muted: #98989f;
+    --faint: #636366;
+    --line: rgb(84 84 88 / 0.6);
+    --accent: #ff8a4c;
+    --accent-fg: #1d1006;
+    --accent-soft: rgb(255 138 76 / 0.16);
+    --chip: rgb(118 118 128 / 0.24);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.popup {
+  width: 360px;
+  padding: 14px 16px 14px;
+}
+.options {
+  max-width: 440px;
+  padding: 20px;
+}
+
+/* The app's name, with a small drawn mark (the app icon's three bars). */
+h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+h1::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: url(icons/icon-48.png) center / cover no-repeat;
+  box-shadow: 0 0.5px 1px rgb(0 0 0 / 0.2);
+}
+.options h1 { font-size: 1.4rem; gap: 10px; margin-bottom: 18px; }
+.options h1::before { width: 32px; height: 32px; border-radius: 8px; }
+
+a { color: var(--accent); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+
+/* The page being saved: a small card. */
+.page {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-grouped);
+}
+@media (prefers-color-scheme: dark) { .page { background: var(--surface); } }
+.page .title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.site, .meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.page .site { display: block; margin-top: 3px; }
+
+.receipt {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 14px 2px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.receipt.quiet { color: var(--muted); font-weight: 400; }
+.meta { margin: 0 2px 8px; }
+
+/* Forms */
+input, button {
+  font: inherit;
+  font-size: 0.92rem;
+}
+input {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--fg);
+  width: 100%;
+}
+input::placeholder { color: var(--muted); opacity: 1; }
+input:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 0; box-shadow: 0 0 0 1px var(--accent); }
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--fg);
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+button:active:not(:disabled) { transform: scale(0.97); }
+button[type="submit"] { background: var(--accent); color: var(--accent-fg); }
+button:disabled { opacity: 0.45; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+label { display: block; margin: 14px 2px 6px; color: var(--muted); font-size: 0.82rem; font-weight: 500; }
+.hint { margin: 6px 2px 0; color: var(--muted); font-size: 0.82rem; }
+.status { min-height: 1.5em; margin: 12px 2px 0; color: var(--muted); }
+
+/* Intent chips: one pill track, the chosen one in the accent. */
+.chips {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 0 0 12px;
+  border-radius: 999px;
+  background: var(--field);
+}
+.chips button {
+  flex: 1;
+  padding: 5px 8px;
+  background: transparent;
+  font-size: 0.86rem;
+}
+.chips button:hover:not([aria-pressed="true"]) { background: var(--chip); }
+.chips button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+
+.note { margin: 0 0 12px; }
+
+/* Rack full: an inset grouped list of radio rows. */
+.choices {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  border-radius: var(--radius);
+  background: var(--bg-grouped);
+}
+@media (prefers-color-scheme: dark) { .choices { background: var(--surface); } }
+.choices li + li label { box-shadow: inset 0 0.5px 0 var(--line); }
+.choices label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  margin: 0;
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+.choices label:hover { background: var(--chip); }
+.choices label:has(input:checked) { background: var(--accent-soft); }
+.choices input {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--faint);
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.choices input:checked { border-color: var(--accent); background: var(--accent); }
+.choices input:checked::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-fg);
+}
+.choices input:focus-visible { box-shadow: none; }
+.choices .site { display: block; font-size: 0.8rem; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.footer {
+  margin: 12px 2px 0;
+  font-size: 0.88rem;
+}

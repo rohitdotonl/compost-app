@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>How a Hot Compost Pile Actually Works | The Field Notebook</title>
+  <meta property="og:title" content="How a Hot Compost Pile Actually Works">
+  <meta name="author" content="Mara Lindqvist">
+  <meta name="description" content="Temperature, airflow and the microbes that do the work, with a small sensor script to watch it happen.">
+  <link rel="icon" href="/favicon.svg">
+  <style>body { font-family: sans-serif } .ad { background: yellow }</style>
+  <script>window.analytics = { track() {} }; document.write('tracking');</script>
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="logo">The Field Notebook</a>
+    <nav><a href="/garden">Garden</a> <a href="/tools">Tools</a> <a href="/about">About</a> <a href="/subscribe">Subscribe</a></nav>
+  </header>
+  <div class="banner promo">Advertisement: buy the best tumbler composter today, 20% off.</div>
+  <main>
+    <article class="post">
+      <h1>How a Hot Compost Pile Actually Works</h1>
+      <p class="byline">By <a href="/authors/mara" rel="author">Mara Lindqvist</a> · <time datetime="2026-09-14">14 September 2026</time></p>
+
+      <p>Most compost piles are not really composting. They are slowly rotting, which is fine, but it takes a year and the result is patchy. A hot pile is different: it reaches 55 to 65 degrees Celsius within a few days, kills most weed seeds, and turns kitchen scraps and autumn leaves into dark, crumbly soil in about eight weeks. The difference is not magic. It comes down to three things you can control: the mix, the moisture and the air.</p>
+
+      <p>I have run a hot pile at the bottom of the allotment for six years now, and for the last two I have kept a cheap temperature probe in it. The numbers taught me more than any book did, so this piece walks through what happens inside, week by week, and ends with the small script I use to log it.</p>
+
+      <h2>The mix: browns and greens</h2>
+
+      <p>Microbes need carbon for energy and nitrogen to build their bodies. Gardeners call the carbon-rich material "browns" (dry leaves, straw, shredded cardboard) and the nitrogen-rich material "greens" (grass clippings, vegetable scraps, coffee grounds, fresh manure). The classic advice is a carbon to nitrogen ratio of roughly thirty to one by weight, which in practice means two or three buckets of browns for every bucket of greens.</p>
+
+      <figure>
+        <img src="img/pile-layers.svg" alt="A cross-section of a compost pile showing alternating brown and green layers" width="800" height="450">
+        <figcaption>Layering is only for building the pile. After the first turn, everything should be thoroughly mixed.</figcaption>
+      </figure>
+
+      <p>Too many greens and the pile goes anaerobic and smells of ammonia. Too many browns and it simply sits there, cold and dry. If you are unsure, err towards browns: a slow pile is a nuisance, a smelly one is a problem with the neighbours.</p>
+
+      <h2>Moisture: the wrung-out sponge</h2>
+
+      <p>The microbes live in a thin film of water around each particle. Without that film they go dormant; with too much water, the air spaces fill and oxygen cannot reach them. The test everyone uses is to squeeze a handful. It should feel like a wrung-out sponge: damp all the way through, with a drop or two of water at most.</p>
+
+      <blockquote>
+        <p>“Water the pile as you build it, not afterwards. Water poured on top of a finished heap runs straight down the sides and leaves the middle dry.”</p>
+      </blockquote>
+
+      <h2>Air, heat and the four phases</h2>
+
+      <p>Once the mix and moisture are right, the pile heats itself. Mesophilic bacteria, which prefer moderate temperatures, start first and multiply quickly on the easy sugars. Their activity raises the temperature until it becomes too hot for them, and thermophilic bacteria take over. That is the hot phase, and it is where the pile does most of its work.</p>
+
+      <figure>
+        <img data-src="img/temperature-curve.svg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="A line chart of pile temperature over eight weeks, peaking at 63 degrees in week one and again after each turn" width="800" height="400" class="lazyload">
+        <figcaption>Six weeks of readings from my pile in 2025. Each spike follows a turn, when fresh oxygen reaches the centre.</figcaption>
+      </figure>
+
+      <table>
+        <caption>The four phases of a hot pile</caption>
+        <thead><tr><th>Phase</th><th>Temperature</th><th>Typical length</th></tr></thead>
+        <tbody>
+          <tr><td>Mesophilic</td><td>20–40 °C</td><td>1–3 days</td></tr>
+          <tr><td>Thermophilic</td><td>45–65 °C</td><td>1–3 weeks</td></tr>
+          <tr><td>Cooling</td><td>falls to 30 °C</td><td>2–4 weeks</td></tr>
+          <tr><td>Curing</td><td>ambient</td><td>1–2 months</td></tr>
+        </tbody>
+      </table>
+
+      <p>As the easy food runs out and oxygen in the centre is used up, the temperature drops. Turning the pile, moving the outside to the middle, brings in fresh air and new material, and the temperature climbs again. Three or four turns over the first month are usually enough. After that the pile cools, fungi and larger creatures move in, and the material cures into finished compost.</p>
+
+      <h2>Logging the temperature</h2>
+
+      <p>You do not need a sensor to make good compost, but it is satisfying to watch the curve. My probe is a waterproof DS18B20 on a long lead, read by a small board that sends a reading every ten minutes. The script that turns the readings into a daily summary is short:</p>
+
+      <pre><code>import csv, statistics
+from collections import defaultdict
+
+days = defaultdict(list)
+with open("pile.csv") as f:
+    for row in csv.DictReader(f):
+        days[row["time"][:10]].append(float(row["celsius"]))
+
+for day, temps in sorted(days.items()):
+    print(f"{day}  max {max(temps):5.1f}  mean {statistics.mean(temps):5.1f}")
+</code></pre>
+
+      <p>The output makes the phases obvious. A day where the maximum stays above <code>55</code> for most of the readings is a good hot day; when the mean falls below about 40 for two days running, it is time to turn.</p>
+
+      <h2>When it goes wrong</h2>
+
+      <ul>
+        <li><strong>It smells of ammonia or rotten eggs.</strong> Too wet or too many greens. Add shredded cardboard and turn it.</li>
+        <li><strong>It never heats up.</strong> Too dry, too small, or too many browns. A pile needs to be at least a cubic metre to hold its heat.</li>
+        <li><strong>It heats, then stops after a week.</strong> That is normal. Turn it.</li>
+      </ul>
+
+      <p>The best thing about a hot pile is how forgiving it is once you understand what the microbes want. Get the mix roughly right, keep it damp, give it air, and they will do the rest faster than you would believe.</p>
+
+      <p class="share">Share this: <a href="https://twitter.example/share">Twitter</a> <a href="https://facebook.example/share">Facebook</a></p>
+    </article>
+
+    <section class="comments">
+      <h3>12 comments</h3>
+      <div class="comment"><p>Great piece! I use a pallet bin and it works brilliantly.</p></div>
+      <form action="/comment" method="post"><textarea name="c"></textarea><button>Post comment</button></form>
+    </section>
+  </main>
+  <aside class="sidebar">
+    <h3>Popular this week</h3>
+    <ul><li><a href="/p/1">Ten tools for a small garden</a></li><li><a href="/p/2">Saving tomato seeds</a></li></ul>
+    <iframe src="https://ads.example/frame" width="300" height="250"></iframe>
+  </aside>
+  <footer class="site-footer">© 2026 The Field Notebook. <a href="/privacy">Privacy</a></footer>
+  <script src="https://tracker.example/t.js"></script>
+</body>
+</html>
